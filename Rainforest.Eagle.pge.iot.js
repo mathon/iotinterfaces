@@ -19,102 +19,25 @@
     ePrice() 
  */
 
-
-    
-function sendEnergyToHub(time, demand, price) {
-  var url = "https://api.devicehub.net/"; 
-  var headers =
-   {     
-     "Content-Type": "application/json",
-     "X-ApiKey": "{api_key}",
-     "Accept":    "*/*",
-   };
-
-  var demandUrl = url + "v2/project/4131/device/{device_key}/sensor/EnergyMonitor/data";
-  var demandPayload = 
-      { "timestamp": time,
-       "value":    demand,
-      };
-   var demandOptions =
-   {
-     "method" : "post",
-     "headers" : headers,
-     "muteHttpExceptions": true,
-     "payload" : demandPayload,
-   };
-
-   
-  var json = UrlFetchApp.fetch(demandUrl, demandOptions).getContentText();
-  
-  var priceUrl = url + "v2/project/4131/device/{device_key}/sensor/EnergyPrice/data";
-  var pricePayload = 
-      { "timestamp": time,
-       "value":    price,
-      };
-   var priceOptions =
-   {
-     "method" : "post",
-     "headers" : headers,
-     "muteHttpExceptions": true,
-     "payload" : pricePayload,
-   };
-  Logger.log(priceOptions); 
-  
-  var json = UrlFetchApp.fetch(priceUrl, priceOptions).getContentText();
-
-}
-
-
-function setEnergyDataATT()
-{
-  var wsApiKey = "{api_key}"
-  var streams = [ "ePrice", "eInst", "eCumm",
-                ];
-  var headers =
-   {     
-     "Content-Type": "application/json",
-     "X-M2X-KEY" : "{m2x_key}",    
-      "Accept":    "*/*",
-   }
-           
-  for (var i=0; i<streams.length; i++) {
-     var updateWs = "https://api-m2x.att.com/v2/devices/" + wsApiKey + "/streams/" + streams[i] + "/value";
-     var payload = {
-        "value": PropertiesService.getScriptProperties().getProperty(streams[i])
-     }; 
-      var attWriteOptions =
-     {
-     "method" : "put",
-     "headers" : headers,
-     "muteHttpExceptions": true,
-     "payload": payload,
-     };
-     Logger.log(updateWs);
-     Logger.log(attWriteOptions);
-     var json = UrlFetchApp.fetch(updateWs, attWriteOptions).getContentText();
-     Logger.log(json);
-     Utilities.sleep(1000);
-}
-}
-
-
-/**
+/****************************************************************************************************************
  *     Rainforest Eagle Energy Meter Data
  */
 function getEnergyStatsData() {
  
-  /* var url = "https://proactivechoice.ddns.net:9030/"; */
-  var url = "https://rainforestcloud.com:9445/cgi-bin/post_manager";
-  var getDemand = "nr<Command>nr<Name>get_instantaneous_demand</Name>nr<MacId>{mac_id}</MacId>nr<Format>JSON</Format>nr</Command>nr";
-  var getPrice = "nr<Command>nr<Name>get_price</Name>nr<MacId>{mac_id}</MacId>nr<Format>JSON</Format>nr</Command>nr";
+  var url = getSecureVal("Rainforest", "URL");
+  var macId = getSecureVal("Rainforest", "MAC");
+  var getDemand = "\n\r<Command>\n\r<Name>get_instantaneous_demand</Name>\n\r<MacId>" + macId + 
+                 "</MacId>\n\r<Format>JSON</Format>\n\r</Command>\n\r";
+  var getPrice = "\n\r<Command>\n\r<Name>get_price</Name>\n\r<MacId>" + macId + 
+                 "</MacId>\n\r<Format>JSON</Format>\n\r</Command>\n\r";
 
   var headers =
    {     
      "Accept": "*/*",
      "Content-Type": "text/xml",
-     "User" : "{email}",
-     "Cloud-Id" : "{cloud_id}",
-     "Password" : "{password}",
+     "User" : getSecureVal("Rainforest", "EMAIL"),
+     "Cloud-Id" : getSecureVal("Rainforest", "USERNAME"),
+     "Password" : getSecureVal("Rainforest", "PASSWORD"),
      "Connection" : "keep-alive",
      "Pragma" : "no-cache",
      "Cache-Control" : "no-cache"
@@ -155,16 +78,11 @@ function getEnergyStatsData() {
    props.setProperty( "eInst", demand);
    props.setProperty( "eTime", time); 
    props.setProperty( "ePrice", price);
-   sendEnergyToHub(time, demand, price);
-   return demand;
-}
-
-function eInst() {
-  return Number(PropertiesService.getScriptProperties().getProperty('eInst'));
-}
-function eTime() {
-  return Date(Number(PropertiesService.getScriptProperties().getProperty('eTime')));
-}
-function ePrice() {
-  return Number(PropertiesService.getScriptProperties().getProperty('ePrice'));
+  
+  /* send to ATT M2X*/
+  var streams =  [ "ePrice", "eInst", "eCumm" ];
+  sendDataATT("Rainforest", streams);
+  logProps(streams);
+  sendEnergyToHub(time, demand, price);
+  return demand;
 }

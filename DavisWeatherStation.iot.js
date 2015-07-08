@@ -1,4 +1,5 @@
 /*
+
  *    Application:  Weathersnoop 3 
       Device:  Davis Vantage Vue Weather Station
       Device:  Davis Weather Envoy
@@ -26,12 +27,22 @@
     sendWeatherStationToHub() sends data to Devicehub.net
       
  */
+}/****************************************************************************************************************
 
+ * 
+ */
 function getWeatherStationData() {
- 
-   var url = "weathersnoop 3 web server"
+
+   var url = getSecureVal("Davis", "URL");
    var json = UrlFetchApp.fetch(url).getContentText();
    var weatherData = JSON.parse(json);
+
+   if( weatherData == null) {
+    var status = "StationDown";
+    Logger.log(status);
+    props.setProperties( { "wsStatus": status } );
+    return status;
+   }
    var props = PropertiesService.getScriptProperties();
    props.setProperties( { 'wsTime': weatherData.site.time } );
    
@@ -48,195 +59,57 @@ function getWeatherStationData() {
    var outdoorMin = weatherData.site.properties.outdoorTemperature.minValueToday.values[0].value;
    props.setProperties( { 'outdoorCur': outdoorCur, 'outdoorMax': outdoorMax, 'outdoorMin': outdoorMin } );
 
-   /* Indoor Temperature */
+   /* Outdoor Temperature */
    var indoorCur = weatherData.site.properties.indoorTemperature.values[0].value;
    var indoorMax = weatherData.site.properties.indoorTemperature.maxValueToday.values[0].value;
    var indoorMin = weatherData.site.properties.indoorTemperature.minValueToday.values[0].value;
    props.setProperties( { 'indoorCur': indoorCur, 'indoorMax': indoorMax, 'indoorMin': indoorMin } );
 
-   /* Wind Speed choices
-      windspeed, tenMinuteAverageWindSpeed, twoMinuteAverageWindSpeed, tenMinuteWindGust
-  */
+   /* Wind Speed 
+   choices :  windspeed, tenMinuteAverageWindSpeed, twoMinuteAverageWindSpeed, tenMinuteWindGust
+                rainRate, dayRain, uvIndex, solarRadiation, transmitterBatteryStatus, consoleBatteryVoltage
+   */
    var windSpeed = weatherData.site.properties.tenMinuteWindGust;
    var windSpeedCur = windSpeed.values[0].value;
    var windSpeedMax = windSpeed.maxValueToday.values[0].value;
    var windSpeedMin = windSpeed.minValueToday.values[0].value;
-   props.setProperties( { 'windSpeedCur': windSpeedCur, 'windSpeedMax': windSpeedMax, 'windSpeedMin': windSpeedMin } ); 
-/* Rain Data Choices
-                rainRate, dayRain
-*/
-   var rainRate = weatherData.site.properties.rainRate;  
-   var rainRateCur = rainRate.values[0].value;
-   var rainRateMax = rainRate.maxValueToday.values[0].value;
-   var rainRateMin = rainRate.minValueToday.values[0].value;   
-   props.setProperties( { 'rainRateCur': rainRateCur, 'rainRateMax': rainRateMax, 'rainRateMin': rainRateMin } );
+   props.setProperties( { 'windSpeedCur': windSpeedCur, 'windSpeedMax': windSpeedMax, 'windSpeedMin': windSpeedMin } );
+  
+   /* rainRate, dayRain
+   , uvIndex, solarRadiation
+   , transmitterBatteryStatus, consoleBatteryVoltage
+   */
+   var windSpeed = weatherData.site.properties.tenMinuteWindGust;
+   var windSpeedCur = windSpeed.values[0].value;
+   var windSpeedMax = windSpeed.maxValueToday.values[0].value;
+   var windSpeedMin = windSpeed.minValueToday.values[0].value;
+   props.setProperties( { 'windSpeedCur': windSpeedCur, 'windSpeedMax': windSpeedMax, 'windSpeedMin': windSpeedMin } );
 
-   var dayRain = weatherData.site.properties.dayRain;
-   var dayRainCur = dayRain.values[0].value;
-   var dayRainMax = dayRain.maxValueToday.values[0].value;
-   var dayRainMin = dayRain.minValueToday.values[0].value;   
-   props.setProperties( { 'dayRainCur': dayRainCur, 'dayRainMax': dayRainMax, 'dayRainMin': dayRainMin } );
+  var transmitterBatteryStatus = weatherData.site.properties.transmitterBatteryStatus.values[0].value;
+  var consoleBatteryVoltage = weatherData.site.properties.consoleBatteryVoltage.values[0].value;
+  if(transmitterBatteryStatus < 3 || consoleBatteryVoltage < 3) {
+    Logger.log(transmitterBatteryStatus);
+    Logger.log(consoleBatteryVoltage);
+    Logger.log("Batteries need replacing");
+    props.setProperties( { 'wsStatus': "BatteryLow" } );
+  }
+  
+  var dayRain = weatherData.site.properties.dayRain.values[0].value;
+  var rainRate = weatherData.site.properties.rainRate.maxValueToday.values[0].value;
+  props.setProperties( { 'dayRain': dayRain, 'rainRate': rainRate } );
 
-/* , uvIndex, solarRadiation, transmitterBatteryStatus, consoleBatteryVoltage */
-   var uvIndex = weatherData.site.properties.uvIndex;  
-   var solarRadiation = weatherData.site.properties.solarRadiation;
-   var transmitterBatteryStatus = weatherData.site.properties.transmitterBatteryStatus; 
-   var consoleBatteryVoltage = weatherData.site.properties.consoleBatteryVoltage;
-
-   setWeatherStatationDataATT();
-
-   return Date();
-}
-
-
-function setWeatherStatationDataATT()
-{
-   /*  var payload = { 
-    "values":  { 
-       "outdoorCur": [{ "value": PropertiesService.getScriptProperties().getProperty('outdoorCur') }],
-       "outdoorMax": [{ "value": PropertiesService.getScriptProperties().getProperty('outdoorMax') }], 
-       "outdoorMin": [{ "value": PropertiesService.getScriptProperties().getProperty('outdoorMin') }],
-       "indoorCur": [{ "value": PropertiesService.getScriptProperties().getProperty('indoorCur') }],
-       "indoorMax": [{ "value": PropertiesService.getScriptProperties().getProperty('indoorMax') }], 
-       "indoorMin": [{ "value": PropertiesService.getScriptProperties().getProperty('indoorMin') }],
-       "wsPoolCur": [{ "value": PropertiesService.getScriptProperties().getProperty('wsPoolCur') }],
-       "wsPoolMax": [{ "value": PropertiesService.getScriptProperties().getProperty('wsPoolMax') }], 
-       "wsPoolMin": [{ "value": PropertiesService.getScriptProperties().getProperty('wsPoolMin') }],
-       "windSpeedCur": [{ "value": PropertiesService.getScriptProperties().getProperty('windSpeedCur') }],
-       "windSpeedMax": [{ "value": PropertiesService.getScriptProperties().getProperty('windSpeedMax') }], 
-       "windSpeedMin": [{ "value": PropertiesService.getScriptProperties().getProperty('windSpeedMin') }],
-     }
-        };  */ 
-
-  var wsApiKey = "7fdc103b006f82fa195a8b58d23e1172"
+  /* send to ATT M2X*/
   var streams = [ "outdoorCur", "outdoorMax", "outdoorMin",
                   "indoorCur", "indoorMax", "indoorMin",
                   "windSpeedCur", "windSpeedMax", "windSpeedMin",
                   "wsPoolCur", "wsPoolMax", "wsPoolMin",
-                ];
-  var headers =
-   {     
-     "Content-Type": "application/json",
-     "X-M2X-KEY" : "31b6c1ed03ebca1626b8a104887b45e2",    
-      "Accept":    "*/*",
-   }
-           
-  for (var i=0; i<streams.length; i++) {
-     var updateWs = "https://api-m2x.att.com/v2/devices/" + wsApiKey + "/streams/" + streams[i] + "/value";
-     var payload = {
-        "value": PropertiesService.getScriptProperties().getProperty(streams[i])
-     }; 
-      var attWriteOptions =
-     {
-     "method" : "put",
-     "headers" : headers,
-     "muteHttpExceptions": true,
-     "payload": payload,
-     };
-     Logger.log(updateWs);
-     Logger.log(attWriteOptions);
-     var json = UrlFetchApp.fetch(updateWs, attWriteOptions).getContentText();
-     Logger.log(json);
-     Utilities.sleep(1000);
+                  "wsStatus", "rainRate", "dayRain",
+                ];   
+  logProps(streams);
+  sendDataATT("Davis", streams);
+
+  return new Date();
 }
-}
+              
 
 
-/**
- *  Pool Functions
- */
-function wsPoolCur() {
-  return Number(PropertiesService.getScriptProperties().getProperty('wsPoolCur'));
-}
-function wsPoolMax() {
-  return Number(PropertiesService.getScriptProperties().getProperty('wsPoolMax'));
-}
-function wsPoolMin() {
-  return Number(PropertiesService.getScriptProperties().getProperty('wsPoolMin'));
-}
-
-
-/**
- *  Outdoor Functions
- */
-function outdoorCur() {
-  return Number(PropertiesService.getScriptProperties().getProperty('outdoorCur'));
-}
-function outdoorMax() {
-  return Number(PropertiesService.getScriptProperties().getProperty('outdoorMax'));
-}
-function outdoorMin() {
-  return Number(PropertiesService.getScriptProperties().getProperty('outdoorMin'));
-}
-
-/**
- *  Indoor Functions
- */
-function indoorCur() {
-  return Number(PropertiesService.getScriptProperties().getProperty('indoorCur'));
-}
-function indoorMax() {
-  return Number(PropertiesService.getScriptProperties().getProperty('indoorMax'));
-}
-function indoorMin() {
-  return Number(PropertiesService.getScriptProperties().getProperty('indoorMin'));
-}
-
-/**
- *  WindSpeed Functions
- */
-function windSpeedCur() {
-  return Number(PropertiesService.getScriptProperties().getProperty('windSpeedCur'));
-}
-function windSpeedMax() {
-  return Number(PropertiesService.getScriptProperties().getProperty('windSpeedMax'));
-}
-function windSpeedMin() {
-  return Number(PropertiesService.getScriptProperties().getProperty('windSpeedMin'));
-}
-
-
-function sendWeatherStationToHub() {
-  var url = "https://api.devicehub.net/"; 
-  var headers =
-   {     
-     "Content-Type": "application/json",
-     "X-ApiKey": "d4460ad8-8ab1-4da8-85fd-a933b58a75f7",
-     "Accept":    "*/*",
-   };
-
-  var demandUrl = url + "v2/project/4131/device/dc54077a-b7e1-4834-bd5a-4cd83eed5bb6/sensor/EnergyMonitor/data";
-  var demandPayload = 
-      { "timestamp": time,
-       "value":    demand,
-      };
-   var demandOptions =
-   {
-     "method" : "post",
-     "headers" : headers,
-     "muteHttpExceptions": true,
-     "payload" : demandPayload,
-   };
-
-   
-  var json = UrlFetchApp.fetch(demandUrl, demandOptions).getContentText();
-  
-  var priceUrl = url + "v2/project/{Project_Id}/device/{Device_Id}/sensor/EnergyPrice/data";
-  var pricePayload = 
-      { "timestamp": time,
-       "value":    price,
-      };
-   var priceOptions =
-   {
-     "method" : "post",
-     "headers" : headers,
-     "muteHttpExceptions": true,
-     "payload" : pricePayload,
-   };
-  Logger.log(priceOptions); 
-  
-  var json = UrlFetchApp.fetch(priceUrl, priceOptions).getContentText();
-
-}
-
-}

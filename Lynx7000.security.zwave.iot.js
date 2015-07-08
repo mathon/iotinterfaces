@@ -13,6 +13,8 @@ Planned additional:
 
  */
 
-/**
- * 
+/****************************************************************************************************************
+ *     Linksys for Doors, Locks, shade control and garage
  */
+function getLynxData() {
+}
